@@ -134,6 +134,11 @@ src/
 
 ---
 
+## 🗄️ Diagrama de classes (SQL)
+
+<img width="7932" height="7251" alt="diagrama de classe" src="https://github.com/user-attachments/assets/302843f5-16cf-4670-b597-25fa874b0db3" />
+
+
 ## 🔗 Endpoints da API REST
 
 ### 🔐 Autenticação
