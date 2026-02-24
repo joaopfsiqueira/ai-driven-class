@@ -245,3 +245,48 @@ flowchart TD
 ---
 
 📌 Este documento representa a **base arquitetural do projeto** e deve evoluir conforme o sistema cresce.
+
+---
+
+## 💻 Execução Local (Frontend + Backend)
+
+### Backend (API)
+
+```bash
+cd avaliacaoFinal/sourceCode
+npm install
+npm run dev
+```
+
+- API: `http://localhost:3001`
+- Swagger: `http://localhost:3001/api-docs`
+
+### Frontend (Admin)
+
+```bash
+cd avaliacaoFinal/frontend
+npm install
+npm run dev
+```
+
+- Aplicação: `http://localhost:5173`
+
+O frontend usa `http://localhost:3000` por padrão para consumir a API.
+Se seu backend estiver em outra porta (ex.: `3001`), crie `avaliacaoFinal/frontend/.env`:
+
+```bash
+VITE_API_BASE_URL=http://localhost:3001
+```
+
+Se a API exigir JWT para os endpoints de veículos, você pode definir token fixo:
+
+```bash
+VITE_API_TOKEN=seu_token_jwt
+```
+
+### Exemplos de uso do frontend
+
+1. Abra `http://localhost:5173`.
+2. Preencha o formulário em **Criar novo veículo** e clique em **Criar veículo**.
+3. Confira o card do veículo em **Lista de veículos**.
+4. Clique em **Deletar** no card desejado e confirme a remoção.

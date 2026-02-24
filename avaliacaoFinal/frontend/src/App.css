@@ -1,0 +1,169 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f5f7fb;
+  color: #1b1f2a;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.container {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+h2 {
+  margin: 0 0 14px;
+  font-size: 1.2rem;
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #e6e8ef;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.vehicle-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+input,
+select,
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  border: 1px solid #cfd4e2;
+  padding: 10px 12px;
+}
+
+input:focus,
+select:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+button {
+  background: #1f6feb;
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.danger-button {
+  background: #d64545;
+}
+
+.vehicle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vehicle-card {
+  border: 1px solid #e0e6f0;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vehicle-card p {
+  margin: 0;
+}
+
+.vehicle-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.vehicle-card__header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.status-pill {
+  font-size: 0.78rem;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.status-pill--active {
+  background: #15803d;
+}
+
+.status-pill--inactive {
+  background: #b45309;
+}
+
+.status-pill--maintenance {
+  background: #334155;
+}
+
+.info-message,
+.error-message {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.info-message {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.error-message {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+@media (max-width: 700px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
