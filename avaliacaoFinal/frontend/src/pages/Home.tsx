@@ -12,13 +12,14 @@ import {
   login,
   saveSession,
 } from "../api/api";
-import { BookingForm } from "../components/BookingForm";
-import { BookingList } from "../components/BookingList";
+import { AppMenu, AppPageId } from "../components/AppMenu";
 import { LoginForm } from "../components/LoginForm";
-import { VehicleList } from "../components/VehicleList";
 import { AuthSession, LoginInput } from "../types/Auth";
 import { Booking, CreateBookingInput } from "../types/Booking";
 import { Vehicle } from "../types/Vehicle";
+import { BookingsPage } from "./BookingsPage";
+import { NewBookingPage } from "./NewBookingPage";
+import { VehiclesPage } from "./VehiclesPage";
 
 export function Home() {
   const [session, setSession] = useState<AuthSession | null>(() => loadSession());
@@ -39,6 +40,7 @@ export function Home() {
   const [isCancelingBookingId, setIsCancelingBookingId] = useState<number | null>(null);
   const [bookingFormErrorMessage, setBookingFormErrorMessage] = useState<string | null>(null);
   const [bookingSuccessMessage, setBookingSuccessMessage] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<AppPageId>("vehicles");
 
   const clearAllData = useCallback(() => {
     setVehicles([]);
@@ -48,6 +50,7 @@ export function Home() {
     setBookingErrorMessage(null);
     setBookingFormErrorMessage(null);
     setBookingSuccessMessage(null);
+    setCurrentPage("vehicles");
   }, []);
 
   const clearCurrentSession = useCallback(() => {
@@ -193,6 +196,12 @@ export function Home() {
     return session.user.role === "CLIENT" && Boolean(session.user.customerId);
   }, [session]);
 
+  useEffect(() => {
+    if (!isBookingAllowed && currentPage === "new-booking") {
+      setCurrentPage("vehicles");
+    }
+  }, [isBookingAllowed, currentPage]);
+
   const handleLogin = async (input: LoginInput) => {
     setIsLoggingIn(true);
     setAuthErrorMessage(null);
@@ -200,6 +209,7 @@ export function Home() {
       const authSession = await login(input);
       saveSession(authSession);
       setSession(authSession);
+      setCurrentPage("vehicles");
     } catch (error) {
       setAuthErrorMessage(getErrorMessage(error));
     } finally {
@@ -286,6 +296,48 @@ export function Home() {
   const bookingsTitle =
     session.user.role === "STAFF" ? "Reservas do sistema" : "Minhas reservas";
 
+  const renderCurrentPage = () => {
+    if (currentPage === "vehicles") {
+      return (
+        <VehiclesPage
+          vehicles={vehicles}
+          isLoading={isLoadingVehicles}
+          errorMessage={vehicleErrorMessage}
+          selectedVehicleId={selectedVehicleId}
+          onSelectVehicle={(vehicleId) => setSelectedVehicleId(vehicleId)}
+        />
+      );
+    }
+
+    if (currentPage === "new-booking") {
+      return (
+        <NewBookingPage
+          vehicles={vehicles}
+          selectedVehicleId={selectedVehicleId}
+          isSubmitting={isCreatingBooking}
+          isBookingAllowed={isBookingAllowed}
+          errorMessage={bookingFormErrorMessage}
+          successMessage={bookingSuccessMessage}
+          onSelectVehicle={(vehicleId) => setSelectedVehicleId(vehicleId)}
+          onCreateBooking={handleCreateBooking}
+        />
+      );
+    }
+
+    return (
+      <BookingsPage
+        title={bookingsTitle}
+        bookings={bookings}
+        vehicles={vehicles}
+        isLoading={isLoadingBookings}
+        errorMessage={bookingErrorMessage}
+        cancelingBookingId={isCancelingBookingId}
+        canCancel={session.user.role === "CLIENT"}
+        onCancelBooking={handleCancelBooking}
+      />
+    );
+  };
+
   return (
     <main className="container">
       <header className="page-header">
@@ -300,43 +352,14 @@ export function Home() {
         </button>
       </header>
 
-      <section className="panel">
-        <h2>Lista de veículos</h2>
-        <VehicleList
-          vehicles={vehicles}
-          isLoading={isLoadingVehicles}
-          errorMessage={vehicleErrorMessage}
-          selectedVehicleId={selectedVehicleId}
-          onSelectVehicle={(vehicleId) => setSelectedVehicleId(vehicleId)}
-        />
-      </section>
+      <AppMenu
+        currentPage={currentPage}
+        bookingsLabel={bookingsTitle}
+        canCreateBooking={isBookingAllowed}
+        onNavigate={setCurrentPage}
+      />
 
-      <section className="panel">
-        <h2>Novo agendamento</h2>
-        <BookingForm
-          vehicles={vehicles}
-          selectedVehicleId={selectedVehicleId}
-          isSubmitting={isCreatingBooking}
-          isBookingAllowed={isBookingAllowed}
-          errorMessage={bookingFormErrorMessage}
-          successMessage={bookingSuccessMessage}
-          onSelectVehicle={(vehicleId) => setSelectedVehicleId(vehicleId)}
-          onCreateBooking={handleCreateBooking}
-        />
-      </section>
-
-      <section className="panel">
-        <h2>{bookingsTitle}</h2>
-        <BookingList
-          bookings={bookings}
-          vehicles={vehicles}
-          isLoading={isLoadingBookings}
-          errorMessage={bookingErrorMessage}
-          cancelingBookingId={isCancelingBookingId}
-          canCancel={session.user.role === "CLIENT"}
-          onCancelBooking={handleCancelBooking}
-        />
-      </section>
+      {renderCurrentPage()}
     </main>
   );
 }
