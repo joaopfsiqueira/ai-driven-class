@@ -261,7 +261,7 @@ npm run dev
 - API: `http://localhost:3001`
 - Swagger: `http://localhost:3001/api-docs`
 
-### Frontend (Admin)
+### Frontend (Portal Web)
 
 ```bash
 cd avaliacaoFinal/frontend
@@ -271,22 +271,23 @@ npm run dev
 
 - Aplicação: `http://localhost:5173`
 
-O frontend usa `http://localhost:3000` por padrão para consumir a API.
-Se seu backend estiver em outra porta (ex.: `3001`), crie `avaliacaoFinal/frontend/.env`:
+O frontend usa proxy do Vite para acessar o backend e evitar problema de CORS.
+Por padrão, o proxy aponta para `http://localhost:3001`.
+Se precisar alterar, crie `avaliacaoFinal/frontend/.env`:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:3001
+VITE_API_PROXY_TARGET=http://localhost:3001
 ```
 
-Se a API exigir JWT para os endpoints de veículos, você pode definir token fixo:
-
-```bash
-VITE_API_TOKEN=seu_token_jwt
-```
+Usuários de teste (mock):
+- `cliente1@email.com` / `123456`
+- `cliente2@email.com` / `123456`
+- `staff@email.com` / `123456`
 
 ### Exemplos de uso do frontend
 
 1. Abra `http://localhost:5173`.
-2. Preencha o formulário em **Criar novo veículo** e clique em **Criar veículo**.
-3. Confira o card do veículo em **Lista de veículos**.
-4. Clique em **Deletar** no card desejado e confirme a remoção.
+2. Faça login com um usuário `CLIENT`.
+3. Liste os veículos e selecione um veículo ativo para agendamento.
+4. Preencha período de início/fim e crie a reserva.
+5. Consulte a seção de reservas e cancele se necessário.

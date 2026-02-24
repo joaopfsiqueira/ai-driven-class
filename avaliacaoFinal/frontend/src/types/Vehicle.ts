@@ -1,16 +1,12 @@
-export interface Vehicle {
-  id: string;
-  brand: string;
-  model: string;
-  plate: string;
-  dailyRate: number;
-  status: string;
-}
+export type VehicleStatus = "ACTIVE" | "INACTIVE" | "MAINTENANCE";
 
-export interface CreateVehicleInput {
+export interface Vehicle {
+  id: number;
   brand: string;
   model: string;
   plate: string;
+  year: number;
+  category: string;
   dailyRate: number;
-  status: string;
+  status: VehicleStatus;
 }
