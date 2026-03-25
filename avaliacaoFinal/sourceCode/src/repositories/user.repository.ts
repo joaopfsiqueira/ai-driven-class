@@ -1,7 +1,8 @@
 import { User } from "../models";
 import { usersMock } from "../mocks/users.mock";
+import { IUserRepository } from "../ports/user-repository.port";
 
-export class UserRepository {
+export class UserRepository implements IUserRepository {
   private data: User[];
 
   constructor() {

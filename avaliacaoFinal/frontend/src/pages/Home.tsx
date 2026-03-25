@@ -1,268 +1,42 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  cancelBooking,
-  clearSession,
-  createBooking,
-  getAuthenticatedUser,
-  getErrorMessage,
-  isUnauthorizedError,
-  listBookings,
-  listVehicles,
-  loadSession,
-  login,
-  saveSession,
-} from "../api/api";
-import { AppMenu, AppPageId } from "../components/AppMenu";
 import { LoginForm } from "../components/LoginForm";
-import { AuthSession, LoginInput } from "../types/Auth";
-import { Booking, CreateBookingInput } from "../types/Booking";
-import { Vehicle } from "../types/Vehicle";
+import { AppMenu } from "../components/AppMenu";
+import { LoginInput } from "../types/Auth";
 import { BookingsPage } from "./BookingsPage";
 import { NewBookingPage } from "./NewBookingPage";
 import { VehiclesPage } from "./VehiclesPage";
+import { useAuthSession } from "../hooks/useAuthSession";
+import { useFleetCatalog } from "../hooks/useFleetCatalog";
+import { useBookingMutations } from "../hooks/useBookingMutations";
 
 export function Home() {
-  const [session, setSession] = useState<AuthSession | null>(() => loadSession());
-  const [isCheckingSession, setIsCheckingSession] = useState(false);
-  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const {
+    session,
+    isCheckingSession,
+    authErrorMessage,
+    isLoggingIn,
+    handleLogin: performLogin,
+    handleLogout,
+    handleUnauthorized,
+  } = useAuthSession();
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
+  const fleet = useFleetCatalog(session, handleUnauthorized);
 
-  const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
-  const [isLoadingBookings, setIsLoadingBookings] = useState(false);
-  const [vehicleErrorMessage, setVehicleErrorMessage] = useState<string | null>(null);
-  const [bookingErrorMessage, setBookingErrorMessage] = useState<string | null>(null);
-
-  const [isCreatingBooking, setIsCreatingBooking] = useState(false);
-  const [isCancelingBookingId, setIsCancelingBookingId] = useState<number | null>(null);
-  const [bookingFormErrorMessage, setBookingFormErrorMessage] = useState<string | null>(null);
-  const [bookingSuccessMessage, setBookingSuccessMessage] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState<AppPageId>("vehicles");
-
-  const clearAllData = useCallback(() => {
-    setVehicles([]);
-    setBookings([]);
-    setSelectedVehicleId(null);
-    setVehicleErrorMessage(null);
-    setBookingErrorMessage(null);
-    setBookingFormErrorMessage(null);
-    setBookingSuccessMessage(null);
-    setCurrentPage("vehicles");
-  }, []);
-
-  const clearCurrentSession = useCallback(() => {
-    clearSession();
-    setSession(null);
-    clearAllData();
-  }, [clearAllData]);
-
-  const handleUnauthorized = useCallback(
-    (error: unknown): boolean => {
-      if (!isUnauthorizedError(error)) {
-        return false;
-      }
-      clearCurrentSession();
-      setAuthErrorMessage("Sua sessão expirou. Faça login novamente.");
-      return true;
-    },
-    [clearCurrentSession]
-  );
-
-  const loadVehiclesData = useCallback(
-    async (showLoading = true) => {
-      if (!session) {
-        return;
-      }
-      if (showLoading) {
-        setIsLoadingVehicles(true);
-      }
-      setVehicleErrorMessage(null);
-      try {
-        const vehicleList = await listVehicles();
-        setVehicles(vehicleList);
-      } catch (error) {
-        if (!handleUnauthorized(error)) {
-          setVehicleErrorMessage(getErrorMessage(error));
-        }
-      } finally {
-        if (showLoading) {
-          setIsLoadingVehicles(false);
-        }
-      }
-    },
-    [session, handleUnauthorized]
-  );
-
-  const loadBookingsData = useCallback(
-    async (showLoading = true) => {
-      if (!session) {
-        return;
-      }
-      if (showLoading) {
-        setIsLoadingBookings(true);
-      }
-      setBookingErrorMessage(null);
-      try {
-        const bookingList = await listBookings(session.user.role);
-        setBookings(bookingList);
-      } catch (error) {
-        if (!handleUnauthorized(error)) {
-          setBookingErrorMessage(getErrorMessage(error));
-        }
-      } finally {
-        if (showLoading) {
-          setIsLoadingBookings(false);
-        }
-      }
-    },
-    [session, handleUnauthorized]
-  );
-
-  const refreshData = useCallback(async () => {
-    if (!session) {
-      return;
-    }
-    await Promise.all([loadVehiclesData(true), loadBookingsData(true)]);
-  }, [session, loadVehiclesData, loadBookingsData]);
-
-  useEffect(() => {
-    if (!session?.token) {
-      setIsCheckingSession(false);
-      return;
-    }
-
-    let isMounted = true;
-    setIsCheckingSession(true);
-
-    void (async () => {
-      try {
-        const user = await getAuthenticatedUser();
-        if (!isMounted) {
-          return;
-        }
-        const nextSession: AuthSession = {
-          ...session,
-          user,
-        };
-        setSession(nextSession);
-        saveSession(nextSession);
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-        clearCurrentSession();
-        setAuthErrorMessage(getErrorMessage(error));
-      } finally {
-        if (isMounted) {
-          setIsCheckingSession(false);
-        }
-      }
-    })();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [session?.token, clearCurrentSession]);
-
-  useEffect(() => {
-    if (!session) {
-      return;
-    }
-    void refreshData();
-  }, [session, refreshData]);
-
-  useEffect(() => {
-    const activeVehicleIds = vehicles
-      .filter((vehicle) => vehicle.status === "ACTIVE")
-      .map((vehicle) => vehicle.id);
-
-    if (activeVehicleIds.length === 0) {
-      setSelectedVehicleId(null);
-      return;
-    }
-
-    if (!selectedVehicleId || !activeVehicleIds.includes(selectedVehicleId)) {
-      setSelectedVehicleId(activeVehicleIds[0]);
-    }
-  }, [vehicles, selectedVehicleId]);
-
-  const isBookingAllowed = useMemo(() => {
-    if (!session) {
-      return false;
-    }
-    return session.user.role === "CLIENT" && Boolean(session.user.customerId);
-  }, [session]);
-
-  useEffect(() => {
-    if (!isBookingAllowed && currentPage === "new-booking") {
-      setCurrentPage("vehicles");
-    }
-  }, [isBookingAllowed, currentPage]);
+  const {
+    isCreatingBooking,
+    isCancelingBookingId,
+    bookingFormErrorMessage,
+    bookingSuccessMessage,
+    handleCreateBooking,
+    handleCancelBooking,
+  } = useBookingMutations({
+    loadBookingsData: fleet.loadBookingsData,
+    handleUnauthorized,
+    onBookingListError: fleet.setBookingErrorMessage,
+  });
 
   const handleLogin = async (input: LoginInput) => {
-    setIsLoggingIn(true);
-    setAuthErrorMessage(null);
-    try {
-      const authSession = await login(input);
-      saveSession(authSession);
-      setSession(authSession);
-      setCurrentPage("vehicles");
-    } catch (error) {
-      setAuthErrorMessage(getErrorMessage(error));
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleLogout = () => {
-    clearCurrentSession();
-    setAuthErrorMessage(null);
-  };
-
-  const handleCreateBooking = async (input: CreateBookingInput): Promise<boolean> => {
-    setIsCreatingBooking(true);
-    setBookingFormErrorMessage(null);
-    setBookingSuccessMessage(null);
-
-    try {
-      await createBooking(input);
-      setBookingSuccessMessage("Agendamento criado com sucesso.");
-      await loadBookingsData(false);
-      return true;
-    } catch (error) {
-      if (handleUnauthorized(error)) {
-        return false;
-      }
-      setBookingFormErrorMessage(getErrorMessage(error));
-      return false;
-    } finally {
-      setIsCreatingBooking(false);
-    }
-  };
-
-  const handleCancelBooking = async (bookingId: number) => {
-    const shouldCancel = window.confirm("Tem certeza que deseja cancelar esta reserva?");
-    if (!shouldCancel) {
-      return;
-    }
-
-    setIsCancelingBookingId(bookingId);
-    setBookingErrorMessage(null);
-
-    try {
-      await cancelBooking(bookingId);
-      setBookingSuccessMessage("Reserva cancelada com sucesso.");
-      await loadBookingsData(false);
-    } catch (error) {
-      if (!handleUnauthorized(error)) {
-        setBookingErrorMessage(getErrorMessage(error));
-      }
-    } finally {
-      setIsCancelingBookingId(null);
-    }
+    await performLogin(input);
+    fleet.setCurrentPage("vehicles");
   };
 
   if (!session) {
@@ -297,28 +71,28 @@ export function Home() {
     session.user.role === "STAFF" ? "Reservas do sistema" : "Minhas reservas";
 
   const renderCurrentPage = () => {
-    if (currentPage === "vehicles") {
+    if (fleet.currentPage === "vehicles") {
       return (
         <VehiclesPage
-          vehicles={vehicles}
-          isLoading={isLoadingVehicles}
-          errorMessage={vehicleErrorMessage}
-          selectedVehicleId={selectedVehicleId}
-          onSelectVehicle={(vehicleId) => setSelectedVehicleId(vehicleId)}
+          vehicles={fleet.vehicles}
+          isLoading={fleet.isLoadingVehicles}
+          errorMessage={fleet.vehicleErrorMessage}
+          selectedVehicleId={fleet.selectedVehicleId}
+          onSelectVehicle={(vehicleId) => fleet.setSelectedVehicleId(vehicleId)}
         />
       );
     }
 
-    if (currentPage === "new-booking") {
+    if (fleet.currentPage === "new-booking") {
       return (
         <NewBookingPage
-          vehicles={vehicles}
-          selectedVehicleId={selectedVehicleId}
+          vehicles={fleet.vehicles}
+          selectedVehicleId={fleet.selectedVehicleId}
           isSubmitting={isCreatingBooking}
-          isBookingAllowed={isBookingAllowed}
+          isBookingAllowed={fleet.isBookingAllowed}
           errorMessage={bookingFormErrorMessage}
           successMessage={bookingSuccessMessage}
-          onSelectVehicle={(vehicleId) => setSelectedVehicleId(vehicleId)}
+          onSelectVehicle={(vehicleId) => fleet.setSelectedVehicleId(vehicleId)}
           onCreateBooking={handleCreateBooking}
         />
       );
@@ -327,10 +101,10 @@ export function Home() {
     return (
       <BookingsPage
         title={bookingsTitle}
-        bookings={bookings}
-        vehicles={vehicles}
-        isLoading={isLoadingBookings}
-        errorMessage={bookingErrorMessage}
+        bookings={fleet.bookings}
+        vehicles={fleet.vehicles}
+        isLoading={fleet.isLoadingBookings}
+        errorMessage={fleet.bookingErrorMessage}
         cancelingBookingId={isCancelingBookingId}
         canCancel={session.user.role === "CLIENT"}
         onCancelBooking={handleCancelBooking}
@@ -353,10 +127,10 @@ export function Home() {
       </header>
 
       <AppMenu
-        currentPage={currentPage}
+        currentPage={fleet.currentPage}
         bookingsLabel={bookingsTitle}
-        canCreateBooking={isBookingAllowed}
-        onNavigate={setCurrentPage}
+        canCreateBooking={fleet.isBookingAllowed}
+        onNavigate={fleet.setCurrentPage}
       />
 
       {renderCurrentPage()}

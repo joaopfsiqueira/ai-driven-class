@@ -1,4 +1,4 @@
-export type AppPageId = "vehicles" | "new-booking" | "bookings";
+import { AppPageId } from "../types/AppPage";
 
 interface AppMenuProps {
   currentPage: AppPageId;

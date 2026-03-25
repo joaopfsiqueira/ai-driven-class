@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { config } from "../config/env";
 import { UnauthorizedError } from "../errors/app-error";
-import { AuthPayload } from "../services/auth.service";
+import { AuthPayload } from "../types/auth-payload";
 
 export interface AuthenticatedRequest extends Request {
   auth?: AuthPayload;

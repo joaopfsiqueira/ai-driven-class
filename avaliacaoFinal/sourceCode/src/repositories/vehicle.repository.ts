@@ -1,7 +1,8 @@
 import { Vehicle } from "../models";
 import { vehiclesMock } from "../mocks/vehicles.mock";
+import { IVehicleRepository } from "../ports/vehicle-repository.port";
 
-export class VehicleRepository {
+export class VehicleRepository implements IVehicleRepository {
   private data: Vehicle[];
 
   constructor() {

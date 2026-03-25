@@ -1,7 +1,8 @@
-import { VehicleRepository } from "../repositories/vehicle.repository";
-import { BookingRepository } from "../repositories/booking.repository";
+import { IVehicleRepository } from "../ports/vehicle-repository.port";
+import { IBookingRepository } from "../ports/booking-repository.port";
 import { Vehicle } from "../models";
 import { NotFoundError, ValidationError } from "../errors/app-error";
+import { parseVehicleAvailabilityRange } from "../domain/booking-dates";
 
 export interface AvailabilityResult {
   available: boolean;
@@ -10,8 +11,8 @@ export interface AvailabilityResult {
 
 export class VehicleService {
   constructor(
-    private readonly vehicleRepository: VehicleRepository,
-    private readonly bookingRepository: BookingRepository
+    private readonly vehicleRepository: IVehicleRepository,
+    private readonly bookingRepository: IBookingRepository
   ) {}
 
   list(): Vehicle[] {
@@ -35,29 +36,20 @@ export class VehicleService {
     if (!vehicle) {
       throw new NotFoundError("Veículo não encontrado.");
     }
-    if (!start || !end) {
-      throw new ValidationError("Parâmetros start e end são obrigatórios.", [
-        { field: "start", message: "Data inicial (YYYY-MM-DD) é obrigatória." },
-        { field: "end", message: "Data final (YYYY-MM-DD) é obrigatória." },
-      ]);
-    }
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      throw new ValidationError("Datas inválidas.", [
-        { field: "start", message: "Formato deve ser YYYY-MM-DD." },
-        { field: "end", message: "Formato deve ser YYYY-MM-DD." },
-      ]);
-    }
-    if (startDate > endDate) {
-      throw new ValidationError("Data inicial deve ser menor ou igual à final.", [
-        { field: "start", message: "start deve ser <= end." },
-      ]);
+    const parsed = parseVehicleAvailabilityRange(start, end);
+    if (!parsed.ok) {
+      const top =
+        parsed.kind === "missing"
+          ? "Parâmetros start e end são obrigatórios."
+          : parsed.kind === "format"
+            ? "Datas inválidas."
+            : "Data inicial deve ser menor ou igual à final.";
+      throw new ValidationError(top, parsed.details);
     }
     const overlapping = this.bookingRepository.findOverlapping(
       vehicleId,
-      start,
-      end,
+      parsed.startDate,
+      parsed.endDate,
       null
     );
     const available = overlapping.length === 0;

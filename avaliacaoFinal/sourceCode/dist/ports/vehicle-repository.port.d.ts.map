@@ -1,0 +1,1 @@
+{"version":3,"file":"vehicle-repository.port.d.ts","sourceRoot":"","sources":["../../src/ports/vehicle-repository.port.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,MAAM,WAAW,CAAC;AAEpC,MAAM,WAAW,kBAAkB;IACjC,QAAQ,CAAC,EAAE,EAAE,MAAM,GAAG,OAAO,GAAG,IAAI,CAAC;IACrC,OAAO,IAAI,OAAO,EAAE,CAAC;CACtB"}

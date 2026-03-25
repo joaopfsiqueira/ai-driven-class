@@ -1,0 +1,536 @@
+openapi: 3.0.3
+info:
+  title: Portal de Aluguel de Carros - API
+  description: API REST do MVP. Autenticação via JWT (Bearer). Use **POST /auth/login** para obter o token.
+  version: 1.0.0
+
+servers:
+  - url: /
+    description: Servidor local (relativo à origem onde o Swagger está sendo servido)
+
+tags:
+  - name: Health
+    description: Verificação do serviço
+  - name: Auth
+    description: Autenticação
+  - name: Veículos
+    description: Listagem e disponibilidade
+  - name: Reservas
+    description: CRUD de agendamentos
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token obtido em POST /auth/login
+
+  schemas:
+    PingResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Serviço funcionando
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: cliente1@email.com
+        password:
+          type: string
+          example: "123456"
+
+    LoginResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+            user:
+              type: object
+              properties:
+                id: { type: integer }
+                email: { type: string }
+                role: { type: string, enum: [CLIENT, STAFF] }
+                customerId: { type: integer, nullable: true }
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string }
+        role: { type: string, enum: [CLIENT, STAFF] }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Vehicle:
+      type: object
+      properties:
+        id: { type: integer }
+        plate: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        year: { type: integer }
+        category: { type: string }
+        daily_rate: { type: number }
+        status: { type: string, enum: [ACTIVE, INACTIVE, MAINTENANCE] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AvailabilityResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            available: { type: boolean }
+            message: { type: string, nullable: true }
+
+    CreateBookingRequest:
+      type: object
+      required:
+        - vehicle_id
+        - start_date
+        - end_date
+      properties:
+        vehicle_id:
+          type: integer
+          example: 1
+        start_date:
+          type: string
+          format: date
+          example: "2026-04-10"
+        end_date:
+          type: string
+          format: date
+          example: "2026-04-12"
+        notes:
+          type: string
+          nullable: true
+
+    Booking:
+      type: object
+      properties:
+        id: { type: integer }
+        customer_id: { type: integer }
+        vehicle_id: { type: integer }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, CANCELED]
+        notes: { type: string, nullable: true }
+        total_amount: { type: number, nullable: true }
+        approved_by: { type: integer, nullable: true }
+        approved_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field: { type: string }
+                  message: { type: string }
+
+paths:
+  /ping:
+    get:
+      tags: [Health]
+      summary: Ping
+      description: Verifica se o serviço está no ar.
+      responses:
+        "200":
+          description: Serviço funcionando
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PingResponse"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: "Retorna JWT para usar em rotas protegidas. Usuários mock: cliente1@email.com, cliente2@email.com, staff@email.com. Senha: 123456"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "422":
+          description: Validação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Usuário autenticado
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Dados do usuário
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /vehicles:
+    get:
+      tags: [Veículos]
+      summary: Listar veículos
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Lista de veículos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Vehicle"
+        "401":
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /vehicles/{id}:
+    get:
+      tags: [Veículos]
+      summary: Detalhe do veículo
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Veículo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Vehicle"
+        "401":
+          description: Não autorizado
+        "404":
+          description: Veículo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /vehicles/{id}/availability:
+    get:
+      tags: [Veículos]
+      summary: Verificar disponibilidade
+      description: Query params **start** e **end** no formato YYYY-MM-DD.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-04-01"
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-04-05"
+      responses:
+        "200":
+          description: Resultado da disponibilidade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityResponse"
+        "401":
+          description: Não autorizado
+        "404":
+          description: Veículo não encontrado
+        "422":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /bookings:
+    get:
+      tags: [Reservas]
+      summary: Listar todas as reservas (STAFF)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Lista de reservas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Booking"
+        "401":
+          description: Não autorizado
+        "403":
+          description: Apenas STAFF
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      tags: [Reservas]
+      summary: Criar reserva (CLIENT)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+      responses:
+        "201":
+          description: Reserva criada (PENDING)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Booking"
+        "401":
+          description: Não autorizado
+        "404":
+          description: Veículo não encontrado
+        "409":
+          description: Conflito de datas
+        "422":
+          description: "Validação (ex.: data retroativa, veículo indisponível)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /bookings/me:
+    get:
+      tags: [Reservas]
+      summary: Minhas reservas (CLIENT)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Lista de reservas do cliente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Booking"
+        "401":
+          description: Não autorizado
+
+  /bookings/{id}:
+    get:
+      tags: [Reservas]
+      summary: Detalhe da reserva
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reserva
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Booking"
+        "401":
+          description: Não autorizado
+        "403":
+          description: Reserva de outro cliente (CLIENT)
+        "404":
+          description: Reserva não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /bookings/{id}/approve:
+    patch:
+      tags: [Reservas]
+      summary: Aprovar reserva (STAFF)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reserva aprovada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Booking"
+        "401":
+          description: Não autorizado
+        "403":
+          description: Apenas STAFF
+        "404":
+          description: Reserva não encontrada
+        "409":
+          description: Conflito de datas ao aprovar
+        "422":
+          description: Apenas reservas PENDING podem ser aprovadas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /bookings/{id}/reject:
+    patch:
+      tags: [Reservas]
+      summary: Rejeitar reserva (STAFF)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reserva rejeitada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Booking"
+        "401":
+          description: Não autorizado
+        "403":
+          description: Apenas STAFF
+        "404":
+          description: Reserva não encontrada
+        "422":
+          description: Apenas reservas PENDING podem ser rejeitadas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /bookings/{id}/cancel:
+    patch:
+      tags: [Reservas]
+      summary: Cancelar reserva (CLIENT - própria reserva)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reserva cancelada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/Booking"
+        "401":
+          description: Não autorizado
+        "403":
+          description: Só pode cancelar suas próprias reservas
+        "404":
+          description: Reserva não encontrada
+        "422":
+          description: Esta reserva não pode ser cancelada (ex. já cancelada)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"

@@ -1,7 +1,8 @@
 import { Customer } from "../models";
 import { customersMock } from "../mocks/customers.mock";
+import { ICustomerRepository } from "../ports/customer-repository.port";
 
-export class CustomerRepository {
+export class CustomerRepository implements ICustomerRepository {
   private data: Customer[];
 
   constructor() {

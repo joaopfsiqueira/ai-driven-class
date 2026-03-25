@@ -1,12 +1,13 @@
-import { Booking, BookingStatus } from "../models";
-import { VehicleRepository } from "../repositories/vehicle.repository";
-import { BookingRepository } from "../repositories/booking.repository";
+import { Booking } from "../models";
+import { IVehicleRepository } from "../ports/vehicle-repository.port";
+import { IBookingRepository } from "../ports/booking-repository.port";
 import {
   NotFoundError,
   ConflictError,
   ValidationError,
   ForbiddenError,
 } from "../errors/app-error";
+import { inclusiveDayCount, parseCreateBookingDates } from "../domain/booking-dates";
 
 export interface CreateBookingDto {
   vehicle_id: number;
@@ -15,56 +16,19 @@ export interface CreateBookingDto {
   notes?: string | null;
 }
 
-function todayISO(): string {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
-}
-
-function daysBetween(start: string, end: string): number {
-  const a = new Date(start);
-  const b = new Date(end);
-  const diff = Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
-  return diff + 1;
-}
-
 export class BookingService {
   constructor(
-    private readonly vehicleRepository: VehicleRepository,
-    private readonly bookingRepository: BookingRepository
+    private readonly vehicleRepository: IVehicleRepository,
+    private readonly bookingRepository: IBookingRepository
   ) {}
 
   create(customerId: number, dto: CreateBookingDto): Booking {
-    const details: { field: string; message: string }[] = [];
-    if (!dto.start_date?.trim()) {
-      details.push({ field: "start_date", message: "Data de início é obrigatória." });
+    const parsed = parseCreateBookingDates(dto.start_date, dto.end_date);
+    if (!parsed.ok) {
+      throw new ValidationError("Dados inválidos.", parsed.details);
     }
-    if (!dto.end_date?.trim()) {
-      details.push({ field: "end_date", message: "Data de fim é obrigatória." });
-    }
-    if (details.length > 0) {
-      throw new ValidationError("Dados inválidos.", details);
-    }
-    const startDate = dto.start_date.trim();
-    const endDate = dto.end_date.trim();
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      throw new ValidationError("Datas inválidas.", [
-        { field: "start_date", message: "Formato deve ser YYYY-MM-DD." },
-        { field: "end_date", message: "Formato deve ser YYYY-MM-DD." },
-      ]);
-    }
-    if (start > end) {
-      throw new ValidationError("start_date deve ser menor ou igual a end_date.", [
-        { field: "start_date", message: "start_date deve ser <= end_date." },
-      ]);
-    }
-    const today = todayISO();
-    if (startDate < today) {
-      throw new ValidationError("Não é permitido reserva retroativa.", [
-        { field: "start_date", message: "start_date deve ser uma data futura ou hoje." },
-      ]);
-    }
+    const startDate = parsed.startDate;
+    const endDate = parsed.endDate;
     const vehicle = this.vehicleRepository.findById(dto.vehicle_id);
     if (!vehicle) {
       throw new NotFoundError("Veículo não encontrado.");
@@ -81,7 +45,7 @@ export class BookingService {
     if (overlapping.length > 0) {
       throw new ConflictError("Já existe reserva para este veículo no período informado.");
     }
-    const days = daysBetween(startDate, endDate);
+    const days = inclusiveDayCount(startDate, endDate);
     const totalAmount = vehicle.daily_rate * days;
     const booking = this.bookingRepository.create({
       customer_id: customerId,

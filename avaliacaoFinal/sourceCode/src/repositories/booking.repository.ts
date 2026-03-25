@@ -1,7 +1,8 @@
-import { Booking, BookingStatus } from "../models";
+import { Booking } from "../models";
 import { bookingsMock } from "../mocks/bookings.mock";
+import { IBookingRepository } from "../ports/booking-repository.port";
 
-export class BookingRepository {
+export class BookingRepository implements IBookingRepository {
   private data: Booking[];
   private nextId: number;
 

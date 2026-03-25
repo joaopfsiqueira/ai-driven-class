@@ -1,20 +1,17 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { UserRepository } from "../repositories/user.repository";
-import { CustomerRepository } from "../repositories/customer.repository";
 import { config } from "../config/env";
 import { UnauthorizedError, ValidationError } from "../errors/app-error";
 import { User, UserRole } from "../models";
+import { IUserRepository } from "../ports/user-repository.port";
+import { ICustomerRepository } from "../ports/customer-repository.port";
+import { AuthPayload } from "../types/auth-payload";
+
+export type { AuthPayload };
 
 export interface LoginDto {
   email: string;
   password: string;
-}
-
-export interface AuthPayload {
-  userId: number;
-  role: UserRole;
-  customerId?: number;
 }
 
 export interface LoginResult {
@@ -24,8 +21,8 @@ export interface LoginResult {
 
 export class AuthService {
   constructor(
-    private readonly userRepository: UserRepository,
-    private readonly customerRepository: CustomerRepository
+    private readonly userRepository: IUserRepository,
+    private readonly customerRepository: ICustomerRepository
   ) {}
 
   login(dto: LoginDto): LoginResult {
